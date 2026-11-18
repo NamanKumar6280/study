@@ -55,11 +55,11 @@ for each row execute procedure public.handle_new_study_user();
 -- Prevent users from changing their own role or approval state.
 create or replace function public.study_is_admin()
 returns boolean language sql stable security definer set search_path = public
-as $ select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'); $;
+as $$ select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'); $$;
 
 create or replace function public.study_can_publish()
 returns boolean language sql stable security definer set search_path = public
-as $ select exists (select 1 from public.profiles where id = auth.uid() and (role = 'admin' or (role = 'teacher' and approval_status = 'approved'))); $;
+as $$ select exists (select 1 from public.profiles where id = auth.uid() and (role = 'admin' or (role = 'teacher' and approval_status = 'approved'))); $$;
 
 create or replace function public.protect_study_role()
 returns trigger language plpgsql security definer set search_path = public
