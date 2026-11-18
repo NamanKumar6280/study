@@ -1,82 +1,44 @@
-# STUDY — Exam workspace
+# STUDY — Student and Teacher Exam Portals
 
-A dark, responsive assessment portal: teachers publish PDF question papers and students submit photos of handwritten answer sheets.
+## Separate websites
+- Student portal: https://namankumar6280.github.io/study/
+- Teacher portal: https://namankumar6280.github.io/study/teacher/
 
-## Live app
+The student site contains student features only. Teacher sign-in and tools are on the separate teacher URL.
 
-- [Student portal](https://namankumar6280.github.io/study/)
-- [Teacher portal](https://namankumar6280.github.io/study/)
+## Registration-number login
+Users enter a registration number and password; no email address is requested. The app maps each registration number to an internal synthetic Supabase Auth email. This is not shown to users. Disable email confirmation in Supabase Authentication settings because these accounts do not use real email addresses. Email-based password recovery will not work; use an administrator-assisted reset process.
 
-Both roles sign in through the same secure login screen. The role is assigned in the database, never through a URL parameter.
+Registration numbers must be 3–32 characters using letters, numbers, underscore or hyphen. New accounts are students by default. Teacher access must be granted by an administrator.
 
-## Current workflow
-
-### Students
-- Register and sign in using email and password.
-- View published question papers and open their private PDF links.
-- Upload 1–10 answer-sheet images per paper (JPG, PNG or WEBP).
-- View their own submission history and profile.
-
-### Teachers
-- Teacher accounts must be explicitly approved by an administrator.
-- Upload and publish PDF question papers with subject, instructions and optional deadline.
-- View submissions for papers they own and open submitted answer-sheet images.
-
-### Accounts and privacy
-- Student, teacher and administrator roles are database-controlled.
-- New signups receive student access only.
-- Teacher approval and role changes are protected by database triggers and row-level security.
-- Question PDFs and answer-sheet images live in private storage buckets and are opened with short-lived signed URLs.
-- Users can edit their profile name and class/designation, but cannot edit their own role.
-
-## Required one-time backend setup
-
-The GitHub Pages site is the front end. Real authentication, role enforcement and shared file storage require a Supabase project.
-
+## Supabase setup
 1. Create a Supabase project.
-2. Open **SQL Editor** and run the complete script in [supabase/setup.sql](supabase/setup.sql).
-3. In **Authentication → URL Configuration**, add:
-   - Site URL: `https://namankumar6280.github.io`
-   - Redirect URL: `https://namankumar6280.github.io/study/**`
-4. In **Project Settings → API**, copy the Project URL and the public anon/publishable key.
-5. Edit [site/config.js](site/config.js) and replace the two placeholders:
-   - `YOUR_SUPABASE_PROJECT_URL`
-   - `YOUR_SUPABASE_ANON_PUBLIC_KEY`
-6. Commit the change. GitHub Actions will publish the updated site.
+2. Run [supabase/setup.sql](supabase/setup.sql) in SQL Editor. It adds the registration number field and unique index to an existing STUDY database too.
+3. Disable email confirmation in Authentication settings.
+4. Add Site URL `https://namankumar6280.github.io` and Redirect URL `https://namankumar6280.github.io/study/**`.
+5. Add the Project URL and public anon/publishable key to [site/config.js](site/config.js). Both portals use this config.
+6. Commit; GitHub Actions deploys both sites.
 
-Only the public anon/publishable key belongs in `site/config.js`. **Never put a Supabase service-role key, database password, or other secret in GitHub Pages/browser code.**
+Never put a service-role key or database password in browser code.
 
-## Make your account the administrator
-
-After you register your own account and confirm your email, run this in Supabase SQL Editor, replacing the email:
+## Administrator and teacher approval
+After creating the intended account, run SQL as the project owner:
 
 ```sql
-update public.profiles
-set role = 'admin', approval_status = 'approved'
-where id = (select id from auth.users where email = 'YOUR_ADMIN_EMAIL');
+update public.profiles set role='admin', approval_status='approved'
+where registration_number='ADMIN_REGISTRATION_NUMBER';
+
+update public.profiles set role='teacher', approval_status='approved'
+where registration_number='TEACHER_REGISTRATION_NUMBER';
 ```
 
-To authorize a teacher after verifying their identity:
+## Features
+- Students: browse published PDF papers, open private PDFs, upload 1–10 answer-sheet images, view submission history and edit profile.
+- Teachers: publish PDFs with subject/instructions/deadline, view and open student submissions.
+- Private storage buckets, short-lived signed URLs and database row-level security.
 
-```sql
-update public.profiles
-set role = 'teacher', approval_status = 'approved'
-where id = (select id from auth.users where email = 'TEACHER_EMAIL');
-```
-
-To revoke teacher access:
-
-```sql
-update public.profiles
-set role = 'student', approval_status = 'approved'
-where id = (select id from auth.users where email = 'TEACHER_EMAIL');
-```
-
-## Repository and deployment
-
-- App: `site/index.html`
-- Public Supabase config placeholder: `site/config.js`
-- Database, RLS and private storage setup: `supabase/setup.sql`
-- GitHub Pages workflow: `.github/workflows/deploy.yml`
-
-GitHub Pages deploys the `site` directory on pushes to `main`.
+## Repository layout
+- `site/index.html`: student portal
+- `site/teacher/index.html`: teacher portal
+- `site/config.js`: shared public Supabase configuration
+- `supabase/setup.sql`: database and storage setup
