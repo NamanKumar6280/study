@@ -1,6 +1,6 @@
-// Copy your Supabase Project URL and anon/public key from Project Settings > API.
- // This key is designed to be used in a browser. NEVER put a service_role key here.
+// Supabase browser configuration. The publishable key is designed for public client use.
+// Never place a service_role or secret key in this file.
 window.STUDY_CONFIG = {
-  supabaseUrl: "YOUR_SUPABASE_PROJECT_URL",
-  supabaseAnonKey: "YOUR_SUPABASE_ANON_PUBLIC_KEY"
+  supabaseUrl: "https://gtoumotsoqugonmgwvqk.supabase.co",
+  supabaseAnonKey: "sb_publishable_4JxjwxwT19_tu9aq6BcHgA_2TTbd9lx"
 };
