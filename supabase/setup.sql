@@ -4,7 +4,8 @@ create extension if not exists pgcrypto;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  full_name text not null default '',\n  registration_number text,
+  full_name text not null default '',
+  registration_number text,
   class_or_title text not null default '',
   role text not null default 'student' check (role in ('student','teacher','admin')),
   approval_status text not null default 'approved' check (approval_status in ('pending','approved','rejected')),
@@ -33,7 +34,10 @@ create table if not exists public.submissions (
   unique (paper_id, student_id)
 );
 
-alter table public.profiles add column if not exists registration_number text;\ncreate unique index if not exists profiles_registration_number_unique on public.profiles (lower(registration_number)) where registration_number is not null;\n\ncreate index if not exists papers_teacher_idx on public.papers(teacher_id);
+alter table public.profiles add column if not exists registration_number text;
+create unique index if not exists profiles_registration_number_unique on public.profiles (lower(registration_number)) where registration_number is not null;
+
+create index if not exists papers_teacher_idx on public.papers(teacher_id);
 create index if not exists submissions_paper_idx on public.submissions(paper_id);
 create index if not exists submissions_student_idx on public.submissions(student_id);
 
