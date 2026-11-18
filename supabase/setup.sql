@@ -45,8 +45,8 @@ create or replace function public.handle_new_study_user()
 returns trigger language plpgsql security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, full_name, role, approval_status)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name',''), 'student', 'approved')
+  insert into public.profiles (id, full_name, registration_number, role, approval_status)
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name',''), nullif(trim(new.raw_user_meta_data->>'registration_number'), ''), 'student', 'approved')
   on conflict (id) do nothing;
   return new;
 end;
