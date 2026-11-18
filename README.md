@@ -1,32 +1,82 @@
-# STUDY — Learn with direction
+# STUDY — Exam workspace
 
-A responsive student and teacher study workspace published directly from this repository with GitHub Pages.
+A dark, responsive assessment portal: teachers publish PDF question papers and students submit photos of handwritten answer sheets.
 
-## App links
+## Live app
 
-After GitHub Pages is enabled and the deployment workflow succeeds:
+- [Student portal](https://namankumar6280.github.io/study/)
+- [Teacher portal](https://namankumar6280.github.io/study/)
 
-- Student workspace: https://namankumar6280.github.io/study/?role=student
-- Teacher workspace: https://namankumar6280.github.io/study/?role=teacher
+Both roles sign in through the same secure login screen. The role is assigned in the database, never through a URL parameter.
 
-Both links open the same site with a different demo workspace selected.
+## Current workflow
 
-## Included features
+### Students
+- Register and sign in using email and password.
+- View published question papers and open their private PDF links.
+- Upload 1–10 answer-sheet images per paper (JPG, PNG or WEBP).
+- View their own submission history and profile.
 
-- Student dashboard and assessment discovery
-- Subject filtering and timed multiple-choice assessments
-- Question navigation, automatic scoring and progress history
-- Teacher dashboard, assessment creation and publishing
-- Study library with local resource listing
-- Student insights and profile settings
-- Responsive mobile and desktop layout
-- Browser-local demo data storage
-- GitHub Actions deployment to GitHub Pages
+### Teachers
+- Teacher accounts must be explicitly approved by an administrator.
+- Upload and publish PDF question papers with subject, instructions and optional deadline.
+- View submissions for papers they own and open submitted answer-sheet images.
 
-## Important limitations
+### Accounts and privacy
+- Student, teacher and administrator roles are database-controlled.
+- New signups receive student access only.
+- Teacher approval and role changes are protected by database triggers and row-level security.
+- Question PDFs and answer-sheet images live in private storage buckets and are opened with short-lived signed URLs.
+- Users can edit their profile name and class/designation, but cannot edit their own role.
 
-This published build is a front-end demo. Data is stored in the current browser and is not shared between students, teachers or devices. The teacher link is a demo preview, not secure teacher authentication. Do not use it for real confidential assessments or high-stakes exams. A real multi-user platform needs a configured backend (for example Supabase), server-side answer grading, administrator-controlled teacher roles, and database security policies.
+## Required one-time backend setup
 
-## Repository
+The GitHub Pages site is the front end. Real authentication, role enforcement and shared file storage require a Supabase project.
 
-The website source is in [site/index.html](site/index.html). Deployment is configured in [.github/workflows/deploy.yml](.github/workflows/deploy.yml).
+1. Create a Supabase project.
+2. Open **SQL Editor** and run the complete script in [supabase/setup.sql](supabase/setup.sql).
+3. In **Authentication → URL Configuration**, add:
+   - Site URL: `https://namankumar6280.github.io`
+   - Redirect URL: `https://namankumar6280.github.io/study/**`
+4. In **Project Settings → API**, copy the Project URL and the public anon/publishable key.
+5. Edit [site/config.js](site/config.js) and replace the two placeholders:
+   - `YOUR_SUPABASE_PROJECT_URL`
+   - `YOUR_SUPABASE_ANON_PUBLIC_KEY`
+6. Commit the change. GitHub Actions will publish the updated site.
+
+Only the public anon/publishable key belongs in `site/config.js`. **Never put a Supabase service-role key, database password, or other secret in GitHub Pages/browser code.**
+
+## Make your account the administrator
+
+After you register your own account and confirm your email, run this in Supabase SQL Editor, replacing the email:
+
+```sql
+update public.profiles
+set role = 'admin', approval_status = 'approved'
+where id = (select id from auth.users where email = 'YOUR_ADMIN_EMAIL');
+```
+
+To authorize a teacher after verifying their identity:
+
+```sql
+update public.profiles
+set role = 'teacher', approval_status = 'approved'
+where id = (select id from auth.users where email = 'TEACHER_EMAIL');
+```
+
+To revoke teacher access:
+
+```sql
+update public.profiles
+set role = 'student', approval_status = 'approved'
+where id = (select id from auth.users where email = 'TEACHER_EMAIL');
+```
+
+## Repository and deployment
+
+- App: `site/index.html`
+- Public Supabase config placeholder: `site/config.js`
+- Database, RLS and private storage setup: `supabase/setup.sql`
+- GitHub Pages workflow: `.github/workflows/deploy.yml`
+
+GitHub Pages deploys the `site` directory on pushes to `main`.
