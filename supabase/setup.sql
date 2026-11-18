@@ -4,7 +4,7 @@ create extension if not exists pgcrypto;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  full_name text not null default '',
+  full_name text not null default '',\n  registration_number text,
   class_or_title text not null default '',
   role text not null default 'student' check (role in ('student','teacher','admin')),
   approval_status text not null default 'approved' check (approval_status in ('pending','approved','rejected')),
@@ -33,7 +33,7 @@ create table if not exists public.submissions (
   unique (paper_id, student_id)
 );
 
-create index if not exists papers_teacher_idx on public.papers(teacher_id);
+alter table public.profiles add column if not exists registration_number text;\ncreate unique index if not exists profiles_registration_number_unique on public.profiles (lower(registration_number)) where registration_number is not null;\n\ncreate index if not exists papers_teacher_idx on public.papers(teacher_id);
 create index if not exists submissions_paper_idx on public.submissions(paper_id);
 create index if not exists submissions_student_idx on public.submissions(student_id);
 
@@ -65,7 +65,7 @@ create or replace function public.protect_study_role()
 returns trigger language plpgsql security definer set search_path = public
 as $$
 begin
-  if (new.role is distinct from old.role or new.approval_status is distinct from old.approval_status)
+  if (new.role is distinct from old.role or new.approval_status is distinct from old.approval_status or new.registration_number is distinct from old.registration_number)
      and auth.uid() is not null
      and not public.study_is_admin() then
     raise exception 'Only a platform administrator can change account roles or approval status';
@@ -144,7 +144,7 @@ with check (bucket_id = 'answer-sheets' and (storage.foldername(name))[1] = auth
 
 -- ADMIN SETUP (run manually after creating your own account):
 -- update public.profiles set role='admin', approval_status='approved'
--- where id = (select id from auth.users where email='YOUR_ADMIN_EMAIL');
+-- where registration_number = 'YOUR_ADMIN_REGISTRATION_NUMBER';
 -- Approve a teacher after verifying their identity:
 -- update public.profiles set role='teacher', approval_status='approved'
--- where id = (select id from auth.users where email='TEACHER_EMAIL');
+-- where registration_number = 'TEACHER_REGISTRATION_NUMBER';
