@@ -40,6 +40,7 @@ create index if not exists admin_activity_actor_idx on public.admin_activity (ac
 alter table public.admin_activity enable row level security;
 revoke all on public.admin_activity from anon, authenticated;
 grant select on public.admin_activity to authenticated;
+grant all on public.admin_activity to service_role;
 
 create or replace function private.study_is_admin()
 returns boolean language sql stable security definer set search_path = ''
@@ -76,6 +77,7 @@ begin
        or new.registration_number is distinct from old.registration_number
        or new.teacher_login is distinct from old.teacher_login
      )
+     and coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role'
      and (select auth.uid()) is not null
      and not private.study_is_admin() then
     raise exception 'Only a platform administrator can change account roles, approval status or teacher login names';
