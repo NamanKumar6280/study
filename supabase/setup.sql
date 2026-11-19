@@ -194,6 +194,7 @@ create table if not exists public.admin_activity (
 );
 create index if not exists admin_activity_created_at_idx on public.admin_activity (created_at desc);
 create index if not exists admin_activity_actor_idx on public.admin_activity (actor_id);
+create index if not exists admin_activity_target_idx on public.admin_activity (target_user_id);
 alter table public.admin_activity enable row level security;
 revoke all on public.admin_activity from anon, authenticated;
 grant select on public.admin_activity to authenticated;
