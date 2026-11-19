@@ -172,15 +172,18 @@
   }
   function exportGradebook() {
     const rows = [["Student name", "Registration number", "Paper", "Subject", "Submitted at", "Status", "Marks", "Maximum marks", "Percentage", "Remarks"]];
-    subs.forEach(s => {
+    const exportRows = role === "student" ? subs.filter(s => s.student_id === user.id) : subs;
+    exportRows.forEach(s => {
       const p = papers.find(x => x.id === s.paper_id), student = studentProfiles.find(x => x.id === s.student_id);
       const max = Number(s.max_marks || p?.max_marks || 0), marks = s.marks_awarded === null ? null : Number(s.marks_awarded);
-      rows.push([student?.full_name || "Student", student?.registration_number || "", p?.title || "Exam", p?.subject || "",
-        s.submitted_at, s.status, marks ?? "", max || "", marks !== null && max ? Math.round(marks / max * 100) + "%" : "", s.remarks || ""]);
+      rows.push([role === "student" ? profile.full_name : (student?.full_name || "Student"),
+        role === "student" ? profile.registration_number : (student?.registration_number || ""),
+        p?.title || "Exam", p?.subject || "", s.submitted_at, s.status, marks ?? "", max || "",
+        marks !== null && max ? Math.round(marks / max * 100) + "%" : "", s.remarks || ""]);
     });
-    const csv = rows.map(row => row.map(v => '"' + String(v ?? "").replace(/"/g, '""') + '"').join(",")).join("\r\n");
-    const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" }), url = URL.createObjectURL(blob), a = document.createElement("a");
-    a.href = url; a.download = "study-gradebook.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    const csv = rows.map(row => row.map(v => '"' + String(v ?? "").replace(/"/g, '""') + '"').join(",")).join("\\r\\n");
+    const blob = new Blob(["\\ufeff", csv], { type: "text/csv;charset=utf-8" }), url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = role === "student" ? "my-study-results.csv" : "study-gradebook.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   }
 
   const originalRender = render;
@@ -202,7 +205,7 @@
       const host = el("page");
       if (!el("exportGradebook")) {
         const bar = document.createElement("div"); bar.className = "card filter-card";
-        bar.innerHTML = '<div class="fieldrow"><div><label for="featureReviewFilter">Review queue</label><select id="featureReviewFilter"><option value="all">All submissions</option><option value="submitted">Awaiting review</option><option value="returned">Returned</option><option value="reviewed">Reviewed</option></select></div><div><label>Export</label><button class="btn" id="exportGradebook">Download gradebook CSV</button></div></div>';
+        bar.innerHTML = '<div class="fieldrow"><div><label for="featureReviewFilter">Review queue</label><select id="featureReviewFilter"><option value="all">All submissions</option><option value="submitted">Awaiting review</option><option value="returned">Returned</option><option value="reviewed">Reviewed</option></select></div><div><label>Export</label><button class="btn" id="exportGradebook">' + (role === "student" ? "Download my results CSV" : "Download gradebook CSV") + '</button></div></div>';
         host.prepend(bar); el("exportGradebook").onclick = exportGradebook;
         el("featureReviewFilter").onchange = () => {
           const value = el("featureReviewFilter").value;
