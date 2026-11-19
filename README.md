@@ -51,9 +51,12 @@ The first administrator on the current project is already provisioned manually i
 
 ## Student features
 - Browse published papers and open private PDFs.
+- Search and filter papers by title, subject and class.
+- See exam class, total marks, duration, availability time and deadline before submitting.
 - Upload 1–10 answer-sheet photos (JPG, PNG or WEBP; 8 MB each).
 - Track submission status and view marks and teacher feedback.
 - Manage profile details.
+- Select a theme preset or custom accent and choose compact/comfortable spacing.
 
 ## Security model
 - The profile trigger always creates public signups with `role = student`; it does not trust user-supplied role metadata.
