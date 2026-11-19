@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080b09">
+<title>STUDY — Admin Console</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link rel="stylesheet" href="../study-ui.css">
+<style>
+select{width:100%;min-height:44px;padding:11px 13px;border:1px solid rgba(160,183,155,.2);border-radius:11px;background:#090e0b;color:#f4f8ef;font:inherit}
+select:focus{outline:2px solid var(--accent);outline-offset:2px}
+.admin-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.admin-stat{min-height:115px}
+.admin-stat .num{font-size:30px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:20px 0 14px}
+.toolbar input{max-width:360px}
+.table-wrap{width:100%;overflow:auto;border:1px solid rgba(183,255,60,.15);border-radius:13px;background:rgba(9,14,10,.42)}
+table{width:100%;border-collapse:collapse;min-width:650px}
+th,td{padding:13px 14px;border-bottom:1px solid rgba(166,190,157,.11);text-align:left;vertical-align:middle}
+th{font-size:10px;color:#aabd9c;letter-spacing:1.1px;text-transform:uppercase;background:rgba(163,230,53,.045)}
+td{font-size:12px;color:#e4ecde}
+tbody tr:hover{background:rgba(163,230,53,.035)}
+tbody tr:last-child td{border-bottom:0}
+.row-actions{display:flex;gap:7px;flex-wrap:wrap}
+.row-actions .btn{min-height:34px;padding:7px 10px;font-size:11px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.form-grid .wide{grid-column:1/-1}
+.hint{font-size:11px;color:#9aa996;line-height:1.6;margin:7px 0 0}
+.password-line{display:flex;gap:8px;align-items:center}
+.password-line input{flex:1;min-width:0}
+.password-line .btn{flex:0 0 auto}
+.credential{
+  border:1px solid rgba(183,255,60,.3);
+  border-radius:14px;padding:17px;margin-top:16px;
+  background:linear-gradient(130deg,rgba(163,230,53,.10),rgba(163,230,53,.025));
+  box-shadow:0 0 25px rgba(163,230,53,.055);
+}
+.credential code{font:700 13px ui-monospace,SFMono-Regular,Consolas,monospace;color:#eaffc9;overflow-wrap:anywhere}
+.credential-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(183,255,60,.12)}
+.credential-row:last-of-type{border-bottom:0}
+.notice-warn{border-color:rgba(251,191,36,.23);background:rgba(180,125,35,.08);color:#f7d28a}
+.modal{position:fixed;inset:0;z-index:99;display:grid;place-items:center;padding:18px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px)}
+.modal-card{width:min(460px,100%);padding:23px;border:1px solid rgba(183,255,60,.25);border-radius:17px;background:#111813;box-shadow:0 25px 80px rgba(0,0,0,.55)}
+.modal-card h3{margin-top:0}
+.activity-action{color:var(--accent);font-weight:800}
+.kicker{font-size:10px;letter-spacing:1.4px;color:#91a286;text-transform:uppercase}
+.account-line{display:flex;align-items:center;gap:10px}
+.account-line .avatar{flex:0 0 34px;width:34px;height:34px;border-radius:10px}
+@media(max-width:800px){.admin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.form-grid{grid-template-columns:1fr}.form-grid .wide{grid-column:auto}}
+@media(max-width:560px){.admin-grid{grid-template-columns:1fr 1fr}.toolbar{align-items:stretch;flex-direction:column}.toolbar input{max-width:none}.password-line{align-items:stretch;flex-direction:column}.password-line .btn{width:100%}.credential-row{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<div id="authView" class="auth">
+  <section class="art">
+    <div class="logo">STUDY<span>.</span></div>
+    <div class="hero">
+      <div class="eyebrow">Platform administration</div>
+      <h1>Lead.<br>Organise.<br><span>Empower.</span></h1>
+      <p>Manage teacher access, oversee your school workspace and keep every assessment running smoothly.</p>
+      <div style="font-size:90px;font-weight:900;opacity:.12">A.</div>
+    </div>
+    <div class="small muted">STUDY · Administrator console</div>
+  </section>
+  <section class="authbox">
+    <div class="authcard">
+      <div class="eyebrow">ADMIN CONSOLE</div>
+      <h2>Administrator sign in</h2>
+      <p class="muted">Use your administrator registration number and password.</p>
+      <form id="authForm">
+        <label for="regNo">Registration number</label>
+        <input id="regNo" required autocomplete="username" placeholder="Enter administrator registration number">
+        <label for="password">Password</label>
+        <input id="password" type="password" required autocomplete="current-password" placeholder="Your password">
+        <button class="btn primary" id="authSubmit">Sign in to admin</button>
+      </form>
+      <div id="authError" class="error" role="alert"></div>
+      <div class="notice">This portal is restricted to approved administrators. Teacher accounts are created here; there is no public admin registration.</div>
+    </div>
+  </section>
+</div>
+
+<div id="appView" class="shell hidden">
+  <aside class="side">
+    <div class="logo">STUDY<span>.</span></div>
+    <div class="navtitle">CONTROL CENTER</div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidefoot">
+      <div class="mini"><b id="miniName"></b><br><span id="miniEmail"></span></div>
+      <button class="btn" id="signOut">Sign out</button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top"><h3 id="pageTitle">Overview</h3><span class="pill">Administrator</span></header>
+    <div class="content" id="page"></div>
+  </main>
+</div>
+
+<div id="resetModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+  <div class="modal-card">
+    <div class="eyebrow">ACCOUNT SECURITY</div>
+    <h3 id="resetTitle">Reset teacher password</h3>
+    <p class="muted small" id="resetTeacherName"></p>
+    <label for="resetPassword">New temporary password</label>
+    <div class="password-line">
+      <input id="resetPassword" type="text" minlength="10" autocomplete="off">
+      <button class="btn" type="button" id="generateReset">Generate</button>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="saveReset">Save new password</button>
+      <button class="btn" type="button" id="cancelReset">Cancel</button>
+    </div>
+    <div id="resetError" class="error"></div>
+  </div>
+</div>
+
+<script src="../config.js"></script>
+<script>
+const CFG=window.STUDY_CONFIG||{},supabaseLib=window.supabase,ready=!!(supabaseLib&&CFG.supabaseUrl&&CFG.supabaseAnonKey),db=ready?supabaseLib.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey):null;
+let user=null,profile=null,page="overview",profiles=[],teachers=[],students=[],papers=[],submissions=[],activity=[],resetTeacherId=null,createdCredentials=null;
+const el=id=>document.getElementById(id),safe=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const when=s=>s?new Date(s).toLocaleString():"—";
+const loginEmail=reg=>"reg-"+reg.trim().toLowerCase().replace(/[^a-z0-9_-]/g,"")+"@study-login.example.com";
+const normalizeTeacherLogin=value=>String(value||"").trim().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9._-]/g,"").replace(/[-_.]{2,}/g,"-").replace(/^[-_.]+|[-_.]+$/g,"");
+const pages=[["overview","Overview"],["teachers","Teachers"],["create","Create teacher"],["students","Students"],["activity","Activity log"]];
+function randomPassword(){const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";const bytes=new Uint8Array(18);crypto.getRandomValues(bytes);return Array.from(bytes,b=>alphabet[b%alphabet.length]).join("")}
+function showError(message){el("authError").textContent=message}
+if(!db){showError("The Supabase sign-in service could not load. Refresh the page and try again.");el("authSubmit").disabled=true}
+el("authForm").onsubmit=async e=>{
+  e.preventDefault();if(!db)return;
+  const button=el("authSubmit");button.disabled=true;showError("");
+  try{
+    const reg=el("regNo").value.trim();
+    if(!/^[A-Za-z0-9_-]{3,32}$/.test(reg))throw Error("Enter a valid registration number.");
+    const {data,error}=await db.auth.signInWithPassword({email:loginEmail(reg),password:el("password").value});
+    if(error)throw error;await enter(data.user);
+  }catch(error){showError(error.message||"Unable to sign in.")}
+  finally{button.disabled=false}
+};
+async function enter(u){
+  user=u;
+  const r=await db.from("profiles").select("*").eq("id",u.id).single();
+  if(r.error)throw Error("Your profile could not be loaded.");
+  profile=r.data;
+  if(profile.role!=="admin"||profile.approval_status!=="approved")throw Error("This account is not an approved administrator. Ask the platform owner to grant admin access.");
+  el("authView").classList.add("hidden");el("appView").classList.remove("hidden");
+  el("miniName").textContent=profile.full_name||"Administrator";
+  el("miniEmail").textContent="STUDY platform administrator";
+  await loadData();render();
+}
+async function loadData(){
+  const [pr,pa,su,ac]=await Promise.all([
+    db.from("profiles").select("id,full_name,registration_number,teacher_login,class_or_title,role,approval_status,created_at").order("created_at",{ascending:false}),
+    db.from("papers").select("id,title,subject,teacher_id,created_at,due_at").order("created_at",{ascending:false}),
+    db.from("submissions").select("id,paper_id,student_id,status,marks_awarded,max_marks,submitted_at").order("submitted_at",{ascending:false}),
+    db.from("admin_activity").select("id,actor_id,action,target_user_id,target_label,details,created_at").order("created_at",{ascending:false}).limit(60)
+  ]);
+  if(pr.error)throw Error("Could not load user directory: "+pr.error.message);
+  profiles=pr.data||[];teachers=profiles.filter(x=>x.role==="teacher");students=profiles.filter(x=>x.role==="student");
+  papers=pa.data||[];submissions=su.data||[];activity=ac.data||[];
+}
+function nav(){
+  el("nav").innerHTML=pages.map(x=>'<button class="'+(page===x[0]?"active":"")+'" data-page="'+x[0]+'">'+x[1]+'</button>').join("");
+  document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{page=b.dataset.page;render()});
+}
+function intro(title,description,button=""){
+  return '<div class="welcome"><div><div class="eyebrow">STUDY CONTROL CENTER</div><h1>'+title+'</h1><p>'+description+'</p></div>'+button+'</div>';
+}
+function stat(label,value,caption){
+  return '<div class="stat admin-stat"><div class="muted small">'+label+'</div><div class="num">'+value+'</div><div class="small muted">'+caption+'</div></div>';
+}
+function tableEmpty(title,desc){return '<div class="empty"><b>'+title+'</b>'+desc+'</div>'}
+function activityLabel(action){
+  return ({teacher_created:"Teacher account created",teacher_password_reset:"Teacher password reset",teacher_activated:"Teacher account activated",teacher_suspended:"Teacher account suspended"})[action]||String(action||"Activity").replace(/_/g," ");
+}
+function renderOverview(){
+  const active=teachers.filter(t=>t.approval_status==="approved").length;
+  const suspended=teachers.length-active;
+  const recent=activity.slice(0,6);
+  return intro("Good to see you, "+safe((profile.full_name||"Admin").split(" ")[0])+".","Your school workspace at a glance.",'<button class="btn primary" data-go-create>＋ Create teacher account</button>')+
+  '<div class="admin-grid">'+
+  stat("Students",students.length,"Registered learner accounts")+
+  stat("Active teachers",active,"Approved teacher accounts")+
+  stat("Suspended teachers",suspended,"Accounts without portal access")+
+  stat("Question papers",papers.length,"Published assessments")+
+  stat("Answer submissions",submissions.length,"Uploaded answer sheets")+
+  stat("Reviewed submissions",submissions.filter(s=>s.status==="reviewed").length,"Marked as reviewed")+
+  '</div><div class="section"><h3>Recent administrator activity</h3><button class="btn" data-go-activity>View activity</button></div>'+
+  (recent.length?'<div class="card">'+recent.map(a=>'<div class="credential-row"><div><b>'+safe(activityLabel(a.action))+'</b><div class="meta">'+safe(a.target_label||"Account")+'</div></div><span class="small muted">'+when(a.created_at)+'</span></div>').join("")+'</div>':tableEmpty("No activity yet","Teacher account actions will be recorded here."));
+}
+function renderTeachers(){
+  const rows=teachers.map(t=>{
+    const active=t.approval_status==="approved";
+    return '<tr><td><div class="account-line"><div class="avatar">'+safe((t.full_name||"T").slice(0,1).toUpperCase())+'</div><div><b>'+safe(t.full_name||"Unnamed teacher")+'</b><div class="meta">'+safe(t.class_or_title||"Teacher")+'</div></div></div></td><td><code>'+safe(t.teacher_login||"Not assigned")+'</code></td><td><span class="'+(active?"tag":"status")+'">'+(active?"Active":"Suspended")+'</span></td><td>'+when(t.created_at)+'</td><td><div class="row-actions"><button class="btn" data-reset="'+t.id+'">Reset password</button><button class="btn '+(active?"":"primary")+'" data-status="'+t.id+'" data-next="'+(active?"rejected":"approved")+'">'+(active?"Suspend":"Reactivate")+'</button></div></td></tr>';
+  }).join("");
+  return intro("Teacher accounts","Create teacher logins, reset passwords and control portal access.",'<button class="btn primary" data-go-create>＋ Add teacher</button>')+
+  '<div class="toolbar"><div class="muted small">'+teachers.length+' teacher account(s)</div><input id="teacherSearch" type="search" placeholder="Search teachers by name or login…"></div>'+
+  (rows?'<div class="table-wrap"><table><thead><tr><th>Teacher</th><th>Sign-in name</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody id="teacherRows">'+rows+'</tbody></table></div>':tableEmpty("No teachers created yet","Create your first teacher account to give a staff member access to the teacher portal."));
+}
+function renderCreate(){
+  return intro("Create a teacher account","Add a staff member and issue their teacher login details. No email is sent; share the credentials privately.")+
+  '<div class="card"><form id="createTeacherForm">'+
+  '<div class="form-grid"><div><label for="teacherName">Teacher full name</label><input id="teacherName" required minlength="2" maxlength="100" placeholder="e.g. Anita Sharma"></div>'+
+  '<div><label for="teacherLogin">Teacher sign-in name</label><input id="teacherLogin" required minlength="3" maxlength="32" autocomplete="off" placeholder="e.g. anita-sharma"><p class="hint">This is what the teacher enters instead of a registration number. It must be unique.</p></div>'+
+  '<div class="wide"><label for="teacherTitle">Subject / designation</label><input id="teacherTitle" maxlength="120" placeholder="e.g. Mathematics Teacher"></div>'+
+  '<div class="wide"><label for="teacherPassword">Temporary password</label><div class="password-line"><input id="teacherPassword" type="text" required minlength="10" autocomplete="off" placeholder="At least 10 characters"><button class="btn" type="button" id="generatePassword">Generate secure password</button></div><p class="hint">Share this password with the teacher privately. They can use it immediately.</p></div></div>'+
+  '<div class="actions"><button class="btn primary" id="createTeacherSubmit">Create teacher account</button></div><div id="createTeacherError" class="error" role="alert"></div></form></div>'+
+  (createdCredentials?'<div class="credential"><div class="eyebrow">ACCOUNT CREATED</div><h3>'+safe(createdCredentials.full_name)+'</h3><p class="meta">Give these credentials to the teacher now. The temporary password is shown here only until you leave this page.</p><div class="credential-row"><span class="muted small">Teacher sign-in name</span><code>'+safe(createdCredentials.teacher_login)+'</code></div><div class="credential-row"><span class="muted small">Temporary password</span><code>'+safe(createdCredentials.password)+'</code></div><div class="actions"><button class="btn primary" id="copyCredentials">Copy credentials</button><button class="btn" data-go-teachers>View teachers</button></div></div>':'');
+}
+function renderStudents(){
+  const rows=students.map(s=>'<tr><td><b>'+safe(s.full_name||"Unnamed student")+'</b></td><td>'+safe(s.registration_number||"—")+'</td><td>'+safe(s.class_or_title||"—")+'</td><td>'+when(s.created_at)+'</td></tr>').join("");
+  return intro("Student directory","View registered student accounts and their registration details.")+
+  '<div class="toolbar"><div class="muted small">'+students.length+' student account(s)</div><input id="studentSearch" type="search" placeholder="Search students by name or registration…"></div>'+
+  (rows?'<div class="table-wrap"><table><thead><tr><th>Student</th><th>Registration number</th><th>Class</th><th>Created</th></tr></thead><tbody id="studentRows">'+rows+'</tbody></table></div>':tableEmpty("No students yet","New student registrations will appear here."));
+}
+function renderActivity(){
+  const rows=activity.map(a=>'<tr><td>'+when(a.created_at)+'</td><td><span class="activity-action">'+safe(activityLabel(a.action))+'</span></td><td>'+safe(a.target_label||"—")+'</td><td><code>'+safe(a.target_user_id||"—")+'</code></td></tr>').join("");
+  return intro("Admin activity log","A record of teacher account creation, password resets and access changes.")+
+  (rows?'<div class="table-wrap"><table><thead><tr><th>When</th><th>Action</th><th>Target</th><th>Account ID</th></tr></thead><tbody>'+rows+'</tbody></table></div>':tableEmpty("No recorded activity","Actions made through this console will appear here."));
+}
+function bindSearch(id,bodyId,rows,fields){
+  const input=el(id);if(!input)return;
+  input.oninput=()=>{const q=input.value.toLowerCase();const filtered=rows.filter(r=>fields.some(f=>String(r[f]||"").toLowerCase().includes(q)));const body=el(bodyId);if(body)body.innerHTML=filtered.length?filtered.map(renderRowForSearch).join(""): '<tr><td colspan="5">No matching records.</td></tr>';};
+}
+function renderRowForSearch(t){
+ const active=t.approval_status==="approved";
+ return '<tr><td><div class="account-line"><div class="avatar">'+safe((t.full_name||"T").slice(0,1).toUpperCase())+'</div><div><b>'+safe(t.full_name||"Unnamed teacher")+'</b><div class="meta">'+safe(t.class_or_title||"Teacher")+'</div></div></td><td><code>'+safe(t.teacher_login||"Not assigned")+'</code></td><td><span class="'+(active?"tag":"status")+'">'+(active?"Active":"Suspended")+'</span></td><td>'+when(t.created_at)+'</td><td><div class="row-actions"><button class="btn" data-reset="'+t.id+'">Reset password</button><button class="btn '+(active?"":"primary")+'" data-status="'+t.id+'" data-next="'+(active?"rejected":"approved")+'">'+(active?"Suspend":"Reactivate")+'</button></div></td></tr>';
+}
+function render(){
+ nav();
+ el("pageTitle").textContent=({overview:"Overview",teachers:"Teachers",create:"Create teacher",students:"Students",activity:"Activity log"})[page]||"Overview";
+ el("page").innerHTML=page==="teachers"?renderTeachers():page==="create"?renderCreate():page==="students"?renderStudents():page==="activity"?renderActivity():renderOverview();
+ document.querySelectorAll("[data-go-create]").forEach(b=>b.onclick=()=>{page="create";createdCredentials=null;render()});
+ document.querySelectorAll("[data-go-teachers]").forEach(b=>b.onclick=()=>{page="teachers";render()});
+ document.querySelectorAll("[data-go-activity]").forEach(b=>b.onclick=()=>{page="activity";render()});
+ document.querySelectorAll("[data-reset]").forEach(b=>b.onclick=()=>openReset(b.dataset.reset));
+ document.querySelectorAll("[data-status]").forEach(b=>b.onclick=()=>changeStatus(b.dataset.status,b.dataset.next));
+ if(el("teacherName")){el("teacherName").oninput=()=>{if(!el("teacherLogin").dataset.edited)el("teacherLogin").value=normalizeTeacherLogin(el("teacherName").value)};el("teacherLogin").oninput=()=>{el("teacherLogin").dataset.edited="1";el("teacherLogin").value=normalizeTeacherLogin(el("teacherLogin").value)}}
+ if(el("generatePassword"))el("generatePassword").onclick=()=>el("teacherPassword").value=randomPassword();
+ if(el("createTeacherForm"))el("createTeacherForm").onsubmit=createTeacher;
+ if(el("copyCredentials"))el("copyCredentials").onclick=()=>copyText("Teacher login: "+createdCredentials.teacher_login+"\nTemporary password: "+createdCredentials.password);
+ if(el("teacherSearch"))bindTeacherSearch();
+ if(el("studentSearch"))bindStudentSearch();
+}
+function bindTeacherSearch(){
+ el("teacherSearch").oninput=()=>{
+  const q=el("teacherSearch").value.toLowerCase();
+  const filtered=teachers.filter(t=>[t.full_name,t.teacher_login,t.class_or_title].some(x=>String(x||"").toLowerCase().includes(q)));
+  el("teacherRows").innerHTML=filtered.length?filtered.map(renderRowForSearch).join(""):'<tr><td colspan="5">No matching teachers.</td></tr>';
+  document.querySelectorAll("[data-reset]").forEach(b=>b.onclick=()=>openReset(b.dataset.reset));
+  document.querySelectorAll("[data-status]").forEach(b=>b.onclick=()=>changeStatus(b.dataset.status,b.dataset.next));
+ };
+}
+function bindStudentSearch(){
+ el("studentSearch").oninput=()=>{
+  const q=el("studentSearch").value.toLowerCase();
+  const filtered=students.filter(s=>[s.full_name,s.registration_number,s.class_or_title].some(x=>String(x||"").toLowerCase().includes(q)));
+  el("studentRows").innerHTML=filtered.length?filtered.map(s=>'<tr><td><b>'+safe(s.full_name||"Unnamed student")+'</b></td><td>'+safe(s.registration_number||"—")+'</td><td>'+safe(s.class_or_title||"—")+'</td><td>'+when(s.created_at)+'</td></tr>').join(""):'<tr><td colspan="4">No matching students.</td></tr>';
+ };
+}
+async function callAdmin(body){
+ const {data,error}=await db.functions.invoke("admin-manage-teachers",{body});
+ if(error){let msg=error.message||"Teacher management request failed.";try{if(error.context&&typeof error.context.json==="function"){const detail=await error.context.json();if(detail.error)msg=detail.error}}catch{}throw Error(msg)}
+ if(data?.error)throw Error(data.error);
+ return data;
+}
+async function createTeacher(e){
+ e.preventDefault();const button=el("createTeacherSubmit"),errorBox=el("createTeacherError");button.disabled=true;errorBox.textContent="";
+ try{
+  const full_name=el("teacherName").value.trim(),teacher_login=normalizeTeacherLogin(el("teacherLogin").value),class_or_title=el("teacherTitle").value.trim(),password=el("teacherPassword").value;
+  if(full_name.length<2)throw Error("Enter the teacher's full name.");
+  if(teacher_login.length<3||teacher_login.length>32)throw Error("Teacher sign-in name must be 3–32 characters.");
+  if(password.length<10)throw Error("Temporary password must be at least 10 characters.");
+  const data=await callAdmin({action:"create_teacher",full_name,teacher_login,class_or_title,password});
+  createdCredentials={full_name:data.teacher.full_name,teacher_login:data.teacher.teacher_login,password:data.temporary_password};
+  await loadData();render();
+ }catch(error){errorBox.textContent=error.message||"Could not create teacher account."}
+ finally{const b=el("createTeacherSubmit");if(b)b.disabled=false}
+}
+async function changeStatus(id,status){
+ const t=teachers.find(x=>x.id===id);if(!t)return;
+ const action=status==="approved"?"reactivate":"suspend";
+ if(!confirm("Are you sure you want to "+action+" "+t.full_name+"'s teacher account?"))return;
+ try{await callAdmin({action:"set_teacher_status",teacher_id:id,approval_status:status});await loadData();render()}
+ catch(error){alert(error.message||"Could not update teacher access.")}
+}
+function openReset(id){
+ const t=teachers.find(x=>x.id===id);if(!t)return;
+ resetTeacherId=id;el("resetTeacherName").textContent="Set a new password for "+t.full_name+" ("+t.teacher_login+").";
+ el("resetPassword").value=randomPassword();el("resetError").textContent="";el("resetModal").classList.remove("hidden");
+}
+el("generateReset").onclick=()=>el("resetPassword").value=randomPassword();
+el("cancelReset").onclick=()=>{el("resetModal").classList.add("hidden");resetTeacherId=null};
+el("saveReset").onclick=async()=>{
+ if(!resetTeacherId)return;
+ const password=el("resetPassword").value;if(password.length<10){el("resetError").textContent="Use at least 10 characters.";return}
+ const b=el("saveReset");b.disabled=true;el("resetError").textContent="";
+ try{
+  const data=await callAdmin({action:"set_teacher_password",teacher_id:resetTeacherId,password});
+  const t=teachers.find(x=>x.id===resetTeacherId);
+  el("resetModal").classList.add("hidden");resetTeacherId=null;
+  createdCredentials={full_name:t?.full_name||"Teacher",teacher_login:data.teacher_login,password:data.temporary_password};
+  page="create";render();
+ }catch(error){el("resetError").textContent=error.message||"Password reset failed."}
+ finally{b.disabled=false}
+};
+async function copyText(value){
+ try{await navigator.clipboard.writeText(value);alert("Copied to clipboard. Share it with the teacher privately.")}
+ catch{alert("Clipboard permission was blocked. Select and copy the credentials manually.")}
+}
+el("signOut").onclick=async()=>{await db.auth.signOut();location.reload()};
+async function boot(){
+ if(!db)return;
+ const {data}=await db.auth.getSession();
+ if(data.session){try{await enter(data.session.user)}catch(error){showError(error.message||"Unable to open admin console.")}}
+ db.auth.onAuthStateChange((event)=>{if(event==="SIGNED_OUT"){el("appView").classList.add("hidden");el("authView").classList.remove("hidden")}});
+}
+boot();
+</script>
+</body>
+</html>
