@@ -473,3 +473,11 @@ input[type=color]{height:46px;padding:5px;max-width:100%;cursor:pointer}
 .theme-modal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
 .theme-modal-actions .btn{flex:1}
 @media(max-width:560px){.top-actions{gap:6px}.theme-trigger{padding:7px 9px;font-size:11px}.theme-trigger .theme-label{display:none}.theme-modal-card{padding:19px}}
+
+.filter-card{padding:17px;margin-bottom:15px}
+.filter-card .fieldrow{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));align-items:end}
+.filter-card label{margin-top:4px}
+.inline-check{display:flex;align-items:center;gap:9px;font-weight:600;margin:13px 0}
+.inline-check input{width:17px;height:17px;accent-color:var(--accent)}
+@media(max-width:560px){.filter-card .fieldrow{grid-template-columns:1fr}}
+#themeModal{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:18px;background:rgba(0,0,0,.76);backdrop-filter:blur(8px)}
