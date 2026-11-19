@@ -183,32 +183,6 @@
     a.href = url; a.download = "study-gradebook.csv"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   }
 
-  const originalPaperCard = paperCard;
-  paperCard = function (p, isTeacher) {
-    let html = originalPaperCard(p, isTeacher);
-    if (role === "student") {
-      const button = '<button class="btn ' + (savedPaperIds.includes(p.id) ? "saved" : "") + '" data-feature-bookmark="' + p.id + '">' +
-        (savedPaperIds.includes(p.id) ? "★ Saved" : "☆ Save") + '</button>';
-      html = html.replace(/(<button class="btn" data-open="[^"]+">View PDF<\/button>)/, "$1" + button);
-    }
-    return html;
-  };
-  const originalBindPaperActions = bindPaperActions;
-  bindPaperActions = function (isTeacher) {
-    originalBindPaperActions(isTeacher);
-    document.querySelectorAll("[data-feature-bookmark]").forEach(b => b.onclick = () => toggleBookmark(b.dataset.featureBookmark));
-  };
-  const originalNav = nav;
-  nav = function () {
-    originalNav();
-    featurePages.forEach(([key, label]) => {
-      const b = document.createElement("button"); b.dataset.featurePage = key; b.textContent = label; b.className = page === key ? "active" : "";
-      if (key === "announcements") { const n = notices.filter(a => !noticeReads.some(r => r.announcement_id === a.id)).length; if (n) b.textContent += " · " + n; }
-      if (key === "saved" && savedPaperIds.length) b.textContent += " · " + savedPaperIds.length;
-      b.onclick = () => { page = key; render(); };
-      el("nav").appendChild(b);
-    });
-  };
   const originalRender = render;
   render = function () {
     originalRender();
