@@ -117,7 +117,7 @@ tbody tr:last-child td{border-bottom:0}
 
 <script src="../config.js"></script>
 <script>
-const CFG=window.STUDY_CONFIG||{},supabaseLib=window.supabase,ready=!!(supabaseLib&&CFG.supabaseUrl&&CFG.supabaseAnonKey),db=ready?supabaseLib.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey):null;
+const CFG=window.STUDY_CONFIG||{},supabaseLib=window.supabase,ready=!!(supabaseLib&&CFG.supabaseUrl&&CFG.supabaseAnonKey),db=ready?supabaseLib.createClient(CFG.supabaseUrl,CFG.supabaseAnonKey,{auth:{storageKey:"study-admin-auth"}}):null;
 let user=null,profile=null,page="overview",profiles=[],teachers=[],students=[],papers=[],submissions=[],activity=[],resetTeacherId=null,createdCredentials=null;
 const el=id=>document.getElementById(id),safe=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const when=s=>s?new Date(s).toLocaleString():"—";
