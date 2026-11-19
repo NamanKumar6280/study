@@ -40,21 +40,32 @@ The first administrator on the current project is already provisioned manually i
 - Create teacher accounts with a full name, unique sign-in name, designation and temporary password.
 - Reset teacher passwords and suspend/reactivate teacher access.
 - Browse student accounts, platform counts and an admin-only activity log.
+- Publish school announcements for everyone, students or teachers; optionally restrict by class, schedule start/expiry, pin and delete notices.
 - Teacher creation, password resets and access changes are recorded in the admin activity table.
 - Admin creation/promotion is deliberately excluded from the website and the teacher-management Edge Function.
 
 ## Teacher features
-- Publish PDF papers with a subject, description and optional deadline.
-- See the names and registration numbers of students who submitted to their own papers.
+- Publish PDF papers using a subject dropdown: Maths, English, Science, SST, Hindi, Computer Science, Sanskrit, General Knowledge, or a custom subject.
+- Assign a class/grade, total marks, duration, scheduled availability and submission deadline.
+- Save drafts, publish on schedule, archive papers, and choose whether late submissions are accepted.
+- Search and filter the paper library by title, subject, class and status.
+- Use the exam calendar to review scheduled openings and deadlines.
+- Read school announcements and mark notices as read.
+- See the names and registration numbers of students who submitted to the teacher's papers.
+- Filter the review queue and download a gradebook CSV with marks, status and remarks.
 - Open private answer-sheet images through short-lived signed URLs.
 - Set submission status, award marks and leave remarks.
 
 ## Student features
 - Browse published papers and open private PDFs.
 - Search and filter papers by title, subject and class.
+- Save papers to a personal revision list.
+- Use the personal study planner to add, schedule, link, complete and delete revision tasks.
+- View the exam calendar and upcoming deadlines.
+- Receive school announcements and mark notices as read.
 - See exam class, total marks, duration, availability time and deadline before submitting.
 - Upload 1–10 answer-sheet photos (JPG, PNG or WEBP; 8 MB each).
-- Track submission status and view marks and teacher feedback.
+- Track submission status and view marks and teacher feedback; export personal results to CSV.
 - Manage profile details.
 - Select a theme preset or custom accent and choose compact/comfortable spacing.
 
