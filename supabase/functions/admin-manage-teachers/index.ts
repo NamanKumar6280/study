@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
       const { data: existing, error: existingError } = await admin
         .from("profiles")
         .select("id")
-        .ilike("teacher_login", teacherLogin)
+        .eq("teacher_login", teacherLogin)
         .maybeSingle();
       if (existingError) throw existingError;
       if (existing) return json({ error: "That teacher login name is already in use. Choose another one." }, 409);
