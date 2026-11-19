@@ -63,6 +63,9 @@ async function setPaperStatus(id,status){
  await refresh();render();
 }
 function bindPaperActions(isTeacher){
+ document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{const paper=papers.find(p=>p.id===b.dataset.open);if(paper)openFile("paper-pdfs",paper.pdf_path)});
+ document.querySelectorAll("[data-answer]").forEach(b=>b.onclick=()=>answerBox(b.dataset.answer));
+ document.querySelectorAll("[data-img]").forEach(b=>b.onclick=()=>openFile("answer-sheets",b.dataset.img));
  document.querySelectorAll("[data-paper-status]").forEach(b=>b.onclick=()=>setPaperStatus(b.dataset.paperStatus,b.dataset.nextStatus));
  document.querySelectorAll("[data-show-sub]").forEach(b=>b.onclick=()=>{page="submissions";render()});
 }
