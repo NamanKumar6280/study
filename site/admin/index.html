@@ -152,7 +152,7 @@ async function enter(u){
 async function loadData(){
   const [pr,pa,su,ac]=await Promise.all([
     db.from("profiles").select("id,full_name,registration_number,teacher_login,class_or_title,role,approval_status,created_at").order("created_at",{ascending:false}),
-    db.from("papers").select("id,title,subject,teacher_id,created_at,due_at").order("created_at",{ascending:false}),
+    db.from("papers").select("id,title,subject,teacher_id,created_at,due_at,target_class,max_marks,duration_minutes,available_from,status,allow_late_submissions").order("created_at",{ascending:false}),
     db.from("submissions").select("id,paper_id,student_id,status,marks_awarded,max_marks,submitted_at").order("submitted_at",{ascending:false}),
     db.from("admin_activity").select("id,actor_id,action,target_user_id,target_label,details,created_at").order("created_at",{ascending:false}).limit(60)
   ]);
@@ -183,8 +183,11 @@ function renderOverview(){
   stat("Students",students.length,"Registered learner accounts")+
   stat("Active teachers",active,"Approved teacher accounts")+
   stat("Suspended teachers",suspended,"Accounts without portal access")+
-  stat("Question papers",papers.length,"Published assessments")+
+  stat("Published papers",papers.filter(p=>(p.status||"published")==="published").length,"Live and scheduled exams")+
+  stat("Draft papers",papers.filter(p=>p.status==="draft").length,"Not visible to students")+
+  stat("Archived papers",papers.filter(p=>p.status==="archived").length,"Retained for records")+
   stat("Answer submissions",submissions.length,"Uploaded answer sheets")+
+  stat("Awaiting review",submissions.filter(s=>s.status==="submitted").length,"Teacher action pending")+
   stat("Reviewed submissions",submissions.filter(s=>s.status==="reviewed").length,"Marked as reviewed")+
   '</div><div class="section"><h3>Recent administrator activity</h3><button class="btn" data-go-activity>View activity</button></div>'+
   (recent.length?'<div class="card">'+recent.map(a=>'<div class="credential-row"><div><b>'+safe(activityLabel(a.action))+'</b><div class="meta">'+safe(a.target_label||"Account")+'</div></div><span class="small muted">'+when(a.created_at)+'</span></div>').join("")+'</div>':tableEmpty("No activity yet","Teacher account actions will be recorded here."));
