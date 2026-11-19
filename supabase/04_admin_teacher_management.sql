@@ -163,3 +163,190 @@ using ((select private.study_is_admin()));
 -- public helper functions. Keep authorization helpers in the private schema.
 drop function if exists public.study_is_admin();
 drop function if exists public.study_can_publish();
+
+
+-- STUDY role-isolation hardening.
+-- Only a trusted database owner using Supabase SQL Editor may grant/change roles.
+-- Authenticated application sessions (including admins) cannot promote accounts.
+-- The server-side service_role is allowed to provision teacher profiles only.
+
+create or replace function private.study_is_active_teacher()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = (select auth.uid())
+      and role = 'teacher'
+      and approval_status = 'approved'
+  );
+$$;
+revoke all on function private.study_is_active_teacher() from public, anon;
+grant execute on function private.study_is_active_teacher() to authenticated;
+
+create or replace function private.study_can_publish()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = (select auth.uid())
+      and approval_status = 'approved'
+      and role in ('admin', 'teacher')
+  );
+$$;
+revoke all on function private.study_can_publish() from public, anon;
+grant execute on function private.study_can_publish() to authenticated;
+
+create or replace function public.protect_study_role()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if (
+       new.role is distinct from old.role
+       or new.approval_status is distinct from old.approval_status
+       or new.registration_number is distinct from old.registration_number
+       or new.teacher_login is distinct from old.teacher_login
+     )
+     and coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role'
+     and (select auth.uid()) is not null then
+    raise exception 'Role, approval and login identity changes are restricted to the Supabase project owner. Use Supabase SQL Editor.';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.protect_study_role() from public, anon, authenticated;
+
+-- A teacher must be approved and assigned to the paper to see student identity.
+drop policy if exists "profile read self" on public.profiles;
+create policy "profile read self" on public.profiles
+for select to authenticated
+using (
+  id = (select auth.uid())
+  or (select private.study_is_admin())
+  or (
+    (select private.study_is_active_teacher())
+    and exists (
+      select 1
+      from public.submissions s
+      join public.papers p on p.id = s.paper_id
+      where s.student_id = profiles.id
+        and p.teacher_id = (select auth.uid())
+    )
+  )
+);
+
+-- Only active teachers may change their own papers; admins may also manage papers.
+drop policy if exists "paper owner or admin updates" on public.papers;
+create policy "paper owner or admin updates" on public.papers
+for update to authenticated
+using (
+  (teacher_id = (select auth.uid()) and (select private.study_is_active_teacher()))
+  or (select private.study_is_admin())
+)
+with check (
+  (teacher_id = (select auth.uid()) and (select private.study_is_active_teacher()))
+  or (select private.study_is_admin())
+);
+
+drop policy if exists "paper owner or admin deletes" on public.papers;
+create policy "paper owner or admin deletes" on public.papers
+for delete to authenticated
+using (
+  (teacher_id = (select auth.uid()) and (select private.study_is_active_teacher()))
+  or (select private.study_is_admin())
+);
+
+-- Suspended teachers cannot read or grade submissions, even with an old session.
+drop policy if exists "students and paper teachers read submissions" on public.submissions;
+create policy "students and paper teachers read submissions" on public.submissions
+for select to authenticated
+using (
+  student_id = (select auth.uid())
+  or (
+    (select private.study_is_active_teacher())
+    and exists (
+      select 1 from public.papers p
+      where p.id = paper_id and p.teacher_id = (select auth.uid())
+    )
+  )
+  or (select private.study_is_admin())
+);
+
+drop policy if exists "paper teacher reviews submissions" on public.submissions;
+create policy "paper teacher reviews submissions" on public.submissions
+for update to authenticated
+using (
+  (
+    (select private.study_is_active_teacher())
+    and exists (
+      select 1 from public.papers p
+      where p.id = paper_id and p.teacher_id = (select auth.uid())
+    )
+  )
+  or (select private.study_is_admin())
+)
+with check (
+  (
+    (select private.study_is_active_teacher())
+    and exists (
+      select 1 from public.papers p
+      where p.id = paper_id and p.teacher_id = (select auth.uid())
+    )
+  )
+  or (select private.study_is_admin())
+);
+
+-- Students must have an active student profile to submit answer sheets.
+drop policy if exists "students submit their own work" on public.submissions;
+create policy "students submit their own work" on public.submissions
+for insert to authenticated
+with check (
+  student_id = (select auth.uid())
+  and exists (
+    select 1 from public.profiles me
+    where me.id = (select auth.uid())
+      and me.role = 'student'
+      and me.approval_status = 'approved'
+  )
+  and exists (select 1 from public.papers p where p.id = paper_id)
+);
+
+-- An already-open teacher session cannot bypass a later suspension to view answer images.
+drop policy if exists "student or assigned teacher reads answer images" on storage.objects;
+create policy "student or assigned teacher reads answer images" on storage.objects
+for select to authenticated
+using (
+  bucket_id = 'answer-sheets'
+  and (
+    (storage.foldername(name))[1] = (select auth.uid())::text
+    or (
+      (select private.study_is_active_teacher())
+      and exists (
+        select 1 from public.submissions s
+        join public.papers p on p.id = s.paper_id
+        where p.teacher_id = (select auth.uid())
+          and name = any(s.image_paths)
+      )
+    )
+    or (select private.study_is_admin())
+  )
+);
+
+drop policy if exists "approved teachers upload paper files" on storage.objects;
+create policy "approved teachers upload paper files" on storage.objects
+for insert to authenticated
+with check (
+  bucket_id = 'paper-pdfs'
+  and (storage.foldername(name))[1] = (select auth.uid())::text
+  and (select private.study_can_publish())
+);
