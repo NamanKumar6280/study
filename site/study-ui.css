@@ -352,3 +352,18 @@ input[type=file]::file-selector-button{
   html{scroll-behavior:auto}
   *,*:before,*:after{transition:none!important;animation:none!important}
 }
+
+/* Teacher marking and consistent controls */
+select{
+  width:100%;min-height:43px;padding:11px 13px;
+  border:1px solid rgba(165,185,157,.20);border-radius:10px;
+  background:#090e0b;color:#f1f7e9;font:inherit;
+}
+select:focus{outline:2px solid var(--accent);outline-offset:2px}
+.review-box{
+  margin-top:16px;padding:15px;
+  border:1px solid rgba(183,255,60,.14);border-radius:12px;
+  background:rgba(7,12,8,.44);
+}
+.review-box .fieldrow{align-items:end}
+.review-box textarea{resize:vertical}
