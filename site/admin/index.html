@@ -92,7 +92,7 @@ tbody tr:last-child td{border-bottom:0}
     </div>
   </aside>
   <main class="main">
-    <header class="top"><h3 id="pageTitle">Overview</h3><span class="pill">Administrator</span></header>
+    <header class="top"><h3 id="pageTitle">Overview</h3><div class="top-actions"><button class="btn theme-trigger" id="themeOpen" type="button"><span>◐</span><span class="theme-label">Appearance</span></button><span class="pill">Administrator</span></div></header>
     <div class="content" id="page"></div>
   </main>
 </div>
@@ -316,7 +316,106 @@ async function boot(){
  if(data.session){try{await enter(data.session.user)}catch(error){showError(error.message||"Unable to open admin console.")}}
  db.auth.onAuthStateChange((event)=>{if(event==="SIGNED_OUT"){el("appView").classList.add("hidden");el("authView").classList.remove("hidden")}});
 }
+const PORTAL="admin";
+
+/* Role-aware appearance preferences; stored locally and never sent to Supabase. */
+const THEME_DEFAULTS={student:"neon",teacher:"ocean",admin:"crimson"};
+const THEME_COLORS={neon:"#b7ff3c",ocean:"#64a8ff",crimson:"#ff5b70",violet:"#b180ff",amber:"#ffb84d"};
+const THEME_KEY="study-appearance-"+PORTAL;
+let themeSettings={preset:THEME_DEFAULTS[PORTAL]||"neon",customAccent:"",density:"comfortable"};
+function colorParts(hex){const h=String(hex||"#b7ff3c").replace("#","");return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]}
+function hexColor(parts){return "#"+parts.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,"0")).join("")}
+function colorAdjust(hex,amount){return hexColor(colorParts(hex).map(v=>v+(amount>=0?(255-v)*amount:v*amount)))}
+function applyAccent(hex){
+  const rgb=colorParts(hex),lum=(0.2126*rgb[0]+0.7152*rgb[1]+0.0722*rgb[2])/255;
+  const root=document.documentElement;
+  root.style.setProperty("--accent",hex);
+  root.style.setProperty("--accent-rgb",rgb.join(","));
+  root.style.setProperty("--accent-strong",colorAdjust(hex,-.16));
+  root.style.setProperty("--accent-bright",colorAdjust(hex,.19));
+  root.style.setProperty("--accent-light",colorAdjust(hex,.40));
+  root.style.setProperty("--accent-dark",colorAdjust(hex,-.28));
+  root.style.setProperty("--accent-pale",colorAdjust(hex,.78));
+  root.style.setProperty("--accent-muted",colorAdjust(hex,.24));
+  root.style.setProperty("--accent-ink",lum>.48?"#11170b":"#ffffff");
+  root.style.setProperty("--accent-gradient","linear-gradient(135deg,"+colorAdjust(hex,.40)+" 0%,"+hex+" 54%,"+colorAdjust(hex,-.25)+" 100%)");
+  root.style.setProperty("--line","rgba("+rgb.join(",")+",.19)");
+  root.style.setProperty("--glow","rgba("+rgb.join(",")+",.22)");
+}
+function applyTheme(settings){
+  const p=THEME_COLORS[settings.preset]?settings.preset:(THEME_DEFAULTS[PORTAL]||"neon");
+  const root=document.documentElement;
+  root.dataset.portal=PORTAL;root.dataset.theme=p;root.dataset.density=settings.density==="compact"?"compact":"comfortable";
+  const custom=settings.customAccent&&/^#[0-9a-f]{6}$/i.test(settings.customAccent);
+  if(custom)applyAccent(settings.customAccent);
+  else ["--accent","--accent-rgb","--accent-strong","--accent-bright","--accent-light","--accent-dark","--accent-pale","--accent-muted","--accent-ink","--accent-gradient","--line","--glow"].forEach(k=>root.style.removeProperty(k));
+  themeSettings={preset:p,customAccent:custom?settings.customAccent:"",density:root.dataset.density};
+  const preset=el("themePreset"),accent=el("themeAccent"),density=el("themeDensity");
+  if(preset){preset.value=p;accent.value=themeSettings.customAccent||THEME_COLORS[p];density.value=themeSettings.density}
+}
+function loadTheme(){
+  try{const saved=JSON.parse(localStorage.getItem(THEME_KEY)||"null");applyTheme(saved||themeSettings)}
+  catch{applyTheme(themeSettings)}
+}
+function previewTheme(){
+  const p=el("themePreset").value,custom=el("themeAccent").value,d=el("themeDensity").value;
+  applyTheme({preset:p,customAccent:custom===THEME_COLORS[p]?"":custom,density:d});
+}
+function openTheme(){el("themeSaved").textContent="";el("themeModal").classList.remove("hidden");}
+function closeTheme(){el("themeModal").classList.add("hidden")}
+function initTheme(){
+  loadTheme();
+  const trigger=el("themeOpen");
+  if(trigger)trigger.onclick=openTheme;
+  el("themeClose").onclick=closeTheme;
+  el("themeModal").onclick=e=>{if(e.target===el("themeModal"))closeTheme()};
+  el("themePreset").onchange=()=>{el("themeAccent").value=THEME_COLORS[el("themePreset").value];previewTheme()};
+  el("themeAccent").oninput=previewTheme;
+  el("themeDensity").onchange=previewTheme;
+  el("themeSave").onclick=()=>{
+    try{localStorage.setItem(THEME_KEY,JSON.stringify(themeSettings));el("themeSaved").textContent="Appearance saved on this browser.";closeTheme()}
+    catch{el("themeSaved").textContent="Browser storage is unavailable. Your appearance will last until this page is closed."}
+  };
+  el("themeReset").onclick=()=>{
+    try{localStorage.removeItem(THEME_KEY)}catch{}
+    applyTheme({preset:THEME_DEFAULTS[PORTAL]||"neon",customAccent:"",density:"comfortable"});
+    el("themeSaved").textContent="Role default restored.";
+  };
+}
+
+initTheme();
 boot();
 </script>
+
+<div id="themeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="themeTitle">
+  <div class="theme-modal-card">
+    <div class="row" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div><div class="eyebrow">PERSONALISE STUDY</div><h3 id="themeTitle">Appearance settings</h3></div>
+      <button class="btn" type="button" id="themeClose" aria-label="Close appearance settings">✕</button>
+    </div>
+    <p class="muted small">Choose a colour system and layout density. Your preference is saved in this browser for this portal.</p>
+    <label for="themePreset">Theme preset</label>
+    <select id="themePreset">
+      <option value="neon">Neon green</option>
+      <option value="ocean">Ocean blue</option>
+      <option value="crimson">Crimson red</option>
+      <option value="violet">Violet</option>
+      <option value="amber">Amber</option>
+    </select>
+    <label for="themeAccent">Custom accent colour</label>
+    <input id="themeAccent" type="color" value="#b7ff3c">
+    <label for="themeDensity">Layout spacing</label>
+    <select id="themeDensity">
+      <option value="comfortable">Comfortable</option>
+      <option value="compact">Compact</option>
+    </select>
+    <div class="theme-preview" id="themePreview"></div>
+    <div class="theme-modal-actions">
+      <button class="btn" type="button" id="themeReset">Reset role default</button>
+      <button class="btn primary" type="button" id="themeSave">Save appearance</button>
+    </div>
+    <div id="themeSaved" class="small muted" role="status" style="margin-top:10px"></div>
+  </div>
+</div>
 </body>
 </html>
